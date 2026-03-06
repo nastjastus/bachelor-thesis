@@ -1,0 +1,16 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Daten - Event Logs nicht auf GitHub!
+data/
+*.xes
+*.csv.gz
+
+# Ergebnisse - werden lokal gespeichert
+results/
+
+# Mac
+.DS_Store

@@ -12,15 +12,18 @@ from pathlib import Path
 
 # Log Pfad
 # Hier den Pfad zu der .xes Datei eintragen
-LOG_PATH = Path("data/BPI Challenge 2017 - Offer log.xes")
+# LOG_PATH = Path("data/BPI Challenge 2017 - Offer log.xes") # auskommentieren für BPIC 2017
+# LOG_PATH = Path("data/Road_Traffic_Fine_Management_Process.xes.gz")
+LOG_PATH = Path("data/Sepsis Cases - Event Log.xes")
 
 # Spaltennamen
 # Standard XES Spaltennamen
 # Werden nur geändern wenn der Log andere Namen hat
-CASE_COL = "case:concept:name"
-ACT_COL  = "concept:name"
-TS_COL   = "time:timestamp"
-RES_COL  = "org:resource"
+CASE_COL = "case:concept:name" # Case-ID
+ACT_COL  = "concept:name" # Activity-name
+TS_COL   = "time:timestamp" 
+# RES_COL  = "org:resource"
+RES_COL = "org:group" # für Sepsis log auskommetieren
 
 # Train/Test Split
 TRAIN_RATIO  = 0.8
@@ -35,6 +38,7 @@ BATCH_WINDOW_MIN = 5    # Zeitfenster für E6 (in Minuten)
 # Automatische Systeme die keinen echten Ressourcen-Wettbewerb darstellen
 # Leer lassen wenn nicht bekannt: set()
 EXCLUDE_RESOURCES = {"User_1"}  # BPI 2017: automatisches Stornierungssystem
+# EXCLUDE_RESOURCES = set()
 
 # Random Forest Parameter
 RF_PARAMS = {

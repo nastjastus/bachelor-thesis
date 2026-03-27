@@ -20,7 +20,8 @@ def train_and_evaluate(df_train, df_test, base_features, target_col, configs, mo
         print(f"\nModell: {model_name}")
         print("-" * 40)
 
-        results_summary    = []
+        # für jedes Modell neu gestartet 
+        results_summary    = [] 
         baseline_rmse_test = None
 
         for config_name, extra_features in configs:
@@ -52,7 +53,7 @@ def train_and_evaluate(df_train, df_test, base_features, target_col, configs, mo
                 delta_str          = "—"
             else:
                 delta     = rmse_test - baseline_rmse_test
-                delta_str = f"{delta:+.2f} h"
+                delta_str = f"{delta:+.2f} h" # "+" damit vorzeichen angezeigt wird ".2f" = zwei Dezimalstellen
 
             results_summary.append({
                 "Modell":           model_name,
@@ -65,8 +66,12 @@ def train_and_evaluate(df_train, df_test, base_features, target_col, configs, mo
                 "Delta Test RMSE":  delta_str,
             })
 
-            print(f"  {config_name:35s} Test RMSE: {rmse_test:.2f} h  |  Delta: {delta_str}")
+            #print(f"  {config_name:35s} Test RMSE: {rmse_test:.2f} h  |  Delta: {delta_str}")
+            total = len(configs)
+            done  = len(results_summary)
+            print(f"\r  Fortschritt: {done}/{total}", end="", flush=True)
 
+        print()
         all_results[model_name] = pd.DataFrame(results_summary)
 
     return all_results

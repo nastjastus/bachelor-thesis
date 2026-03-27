@@ -9,8 +9,8 @@ Ausführen: python pipeline.py
 """
 
 import pandas as pd
-import numpy as np
 import pm4py
+from itertools import combinations
 
 from config import (
     LOG_PATH, CASE_COL, ACT_COL, TS_COL, RES_COL,
@@ -18,10 +18,17 @@ from config import (
     BATCH_WINDOW_MIN, EXCLUDE_RESOURCES, RF_PARAMS
 )
 
-from intercase_encodings import e1_open_cases, e2_resource_load, e3_peer_window
-from intercase_encodings import e4_avg_delay, e5_queue_length, e6_batching
+from intercase_encodings import (
+    e1_open_cases,
+    e2_resource_load,
+    e3_peer_window,
+    e4_avg_delay,
+    e5_queue_length,
+    e6_batching,
+)
 
 from models import random_forest, cart, xgboost_model
+
 from evaluate import train_and_evaluate, print_results, save_results
 
 # 1. Log laden
@@ -31,10 +38,10 @@ print("1. LOG LADEN")
 print("=" * 60)
 
 df = pm4py.read_xes(str(LOG_PATH))
-df = df.sort_values([CASE_COL, TS_COL]).reset_index(drop=True)
-df[TS_COL] = pd.to_datetime(df[TS_COL], utc=True).dt.tz_localize(None)
+df = df.sort_values([CASE_COL, TS_COL]).reset_index(drop=True) # sortieren nach Case-ID dann Zeitstempel
+df[TS_COL] = pd.to_datetime(df[TS_COL], utc=True).dt.tz_localize(None) # Zeitstempel berenigen 
 
-print(f"Events:     {len(df):,}")
+print(f"Events:     {len(df):,}") 
 print(f"Cases:      {df[CASE_COL].nunique():,}")
 print(f"Activities: {df[ACT_COL].nunique()}")
 print(f"Zeitraum:   {df[TS_COL].min().date()} → {df[TS_COL].max().date()}")
@@ -45,6 +52,8 @@ print("\n" + "=" * 60)
 print("2. REMAINING TIME (TARGET VARIABLE)")
 print("=" * 60)
 
+# Hier wird case_end_time als neue Spalte an df gejoint
+
 case_end = df.groupby(CASE_COL)[TS_COL].max().rename("case_end_time")
 df       = df.join(case_end, on=CASE_COL)
 df["remaining_time_s"] = (df["case_end_time"] - df[TS_COL]).dt.total_seconds()
@@ -53,6 +62,22 @@ df["remaining_time_h"] = df["remaining_time_s"] / 3600
 print(f"Remaining Time (h) – min:  {df['remaining_time_h'].min():.1f}")
 print(f"Remaining Time (h) – mean: {df['remaining_time_h'].mean():.1f}")
 print(f"Remaining Time (h) – max:  {df['remaining_time_h'].max():.1f}")
+
+# --- nur Statistik aus Interesse: durchschnittliche Case Duration ---
+case_duration = (
+    df.groupby(CASE_COL)[TS_COL]
+      .agg(start="min", end="max")
+)
+
+duration_h = (
+    (case_duration["end"] - case_duration["start"])
+    .dt.total_seconds() / 3600
+)
+
+print("\n[INFO] Case Duration Statistik:")
+print(f"min:  {duration_h.min():.1f} h")
+print(f"mean: {duration_h.mean():.1f} h")
+print(f"max:  {duration_h.max():.1f} h")
 
 # 3. Intra-Case Features
 
@@ -98,6 +123,7 @@ print("=" * 60)
 
 df = df.sort_values(TS_COL).reset_index(drop=True)
 
+# Hilfstabelle mit Start- und Endzeit jedes Cases
 case_times = (
     df.groupby(CASE_COL)[TS_COL]
       .agg(start_time="min", end_time="max")
@@ -147,12 +173,12 @@ case_order = (
       .sort_values()
       .reset_index()
 )
-case_order.columns = [CASE_COL, "case_start_time"]
+case_order.columns = [CASE_COL, "case_start_time"] # Absicherung dass die erst Spalte CASE_COL bennant bleibt
 
-n_cases     = len(case_order)
-n_train     = int(n_cases * TRAIN_RATIO)
-train_cases = set(case_order.iloc[:n_train][CASE_COL])
-test_cases  = set(case_order.iloc[n_train:][CASE_COL])
+n_cases     = len(case_order) # zählt gesamt Anzahl
+n_train     = int(n_cases * TRAIN_RATIO) # berechnet wie vile Cases ins Trainingsset kommen 
+train_cases = set(case_order.iloc[:n_train][CASE_COL]) # alle cases VOR n_train
+test_cases  = set(case_order.iloc[n_train:][CASE_COL]) # alle danach
 
 df_train = df[df[CASE_COL].isin(train_cases)].copy()
 df_test  = df[df[CASE_COL].isin(test_cases)].copy()
@@ -173,6 +199,8 @@ print(f"  min / mean / max: "
       f"{round(df['avg_delay_in_window'].mean()/3600, 2)} / "
       f"{round(df['avg_delay_in_window'].max()/3600, 2)} h")
 
+df.to_csv("results/debug_df.csv", index=False)
+
 # 6. Modelle definieren
 
 print("\n" + "=" * 60)
@@ -191,49 +219,28 @@ print(f"Modelle: {list(MODELS.keys())}")
 
 TARGET_COL = "remaining_time_s"
 
-CONFIGS = [
-    ("Baseline",                  []),
-    ("+ E1",                      ["open_cases_at_time"]),
-    ("+ E2",                      ["resource_load_at_time"]),
-    ("+ E3",                      ["peer_cases_in_window"]),
-    ("+ E4",                      ["avg_delay_in_window"]),
-    ("+ E5",                      ["queue_length_at_activity"]),
-    ("+ E6a",                     ["batch_indicator"]),
-    ("+ E6b",                     ["batch_size"]),
-    ("+ E6a + E6b",               ["batch_indicator", "batch_size"]),
-    ("+ E1 + E2",                 ["open_cases_at_time", "resource_load_at_time"]),
-    ("+ E1 + E3",                 ["open_cases_at_time", "peer_cases_in_window"]),
-    ("+ E1 + E4",                 ["open_cases_at_time", "avg_delay_in_window"]),
-    ("+ E1 + E5",                 ["open_cases_at_time", "queue_length_at_activity"]),
-    ("+ E2 + E3",                 ["resource_load_at_time", "peer_cases_in_window"]),
-    ("+ E2 + E4",                 ["resource_load_at_time", "avg_delay_in_window"]),
-    ("+ E2 + E5",                 ["resource_load_at_time", "queue_length_at_activity"]),
-    ("+ E3 + E4",                 ["peer_cases_in_window", "avg_delay_in_window"]),
-    ("+ E3 + E5",                 ["peer_cases_in_window", "queue_length_at_activity"]),
-    ("+ E4 + E5",                 ["avg_delay_in_window", "queue_length_at_activity"]),
-    ("+ E1 + E2 + E3",            ["open_cases_at_time", "resource_load_at_time", "peer_cases_in_window"]),
-    ("+ E1 + E2 + E4",            ["open_cases_at_time", "resource_load_at_time", "avg_delay_in_window"]),
-    ("+ E1 + E2 + E5",            ["open_cases_at_time", "resource_load_at_time", "queue_length_at_activity"]),
-    ("+ E1 + E3 + E4",            ["open_cases_at_time", "peer_cases_in_window", "avg_delay_in_window"]),
-    ("+ E1 + E3 + E5",            ["open_cases_at_time", "peer_cases_in_window", "queue_length_at_activity"]),
-    ("+ E1 + E4 + E5",            ["open_cases_at_time", "avg_delay_in_window", "queue_length_at_activity"]),
-    ("+ E2 + E3 + E4",            ["resource_load_at_time", "peer_cases_in_window", "avg_delay_in_window"]),
-    ("+ E2 + E3 + E5",            ["resource_load_at_time", "peer_cases_in_window", "queue_length_at_activity"]),
-    ("+ E2 + E4 + E5",            ["resource_load_at_time", "avg_delay_in_window", "queue_length_at_activity"]),
-    ("+ E3 + E4 + E5",            ["peer_cases_in_window", "avg_delay_in_window", "queue_length_at_activity"]),
-    ("+ E1 + E2 + E3 + E4",       ["open_cases_at_time", "resource_load_at_time", "peer_cases_in_window", "avg_delay_in_window"]),
-    ("+ E1 + E2 + E3 + E5",       ["open_cases_at_time", "resource_load_at_time", "peer_cases_in_window", "queue_length_at_activity"]),
-    ("+ E1 + E2 + E4 + E5",       ["open_cases_at_time", "resource_load_at_time", "avg_delay_in_window", "queue_length_at_activity"]),
-    ("+ E1 + E3 + E4 + E5",       ["open_cases_at_time", "peer_cases_in_window", "avg_delay_in_window", "queue_length_at_activity"]),
-    ("+ E2 + E3 + E4 + E5",       ["resource_load_at_time", "peer_cases_in_window", "avg_delay_in_window", "queue_length_at_activity"]),
-    ("+ E1 + E2 + E3 + E4 + E5",  ["open_cases_at_time", "resource_load_at_time", "peer_cases_in_window", "avg_delay_in_window", "queue_length_at_activity"]),
-    ("+ E1 + E3 + E4 + E6a",      ["open_cases_at_time", "peer_cases_in_window", "avg_delay_in_window", "batch_indicator"]),
-    ("+ E1 + E3 + E4 + E6b",      ["open_cases_at_time", "peer_cases_in_window", "avg_delay_in_window", "batch_size"]),
-    ("+ E1 + E3 + E4 + E6a + E6b",["open_cases_at_time", "peer_cases_in_window", "avg_delay_in_window", "batch_indicator", "batch_size"]),
-    ("+ E1-E5 + E6a",             ["open_cases_at_time", "resource_load_at_time", "peer_cases_in_window", "avg_delay_in_window", "queue_length_at_activity", "batch_indicator"]),
-    ("+ E1-E5 + E6b",             ["open_cases_at_time", "resource_load_at_time", "peer_cases_in_window", "avg_delay_in_window", "queue_length_at_activity", "batch_size"]),
-    ("+ E1-E5 + E6a + E6b",       ["open_cases_at_time", "resource_load_at_time", "peer_cases_in_window", "avg_delay_in_window", "queue_length_at_activity", "batch_indicator", "batch_size"]),
+print("\n" + "=" * 60)
+print("7. KONFIGURATIONEN")
+print("=" * 60)
+
+ENCODINGS = [
+    ("E1", ["open_cases_at_time"]),
+    ("E2", ["resource_load_at_time"]),
+    ("E3", ["peer_cases_in_window"]),
+    ("E4", ["avg_delay_in_window"]),
+    ("E5", ["queue_length_at_activity"]),
+    ("E6", ["batch_indicator", "batch_size"]),
 ]
+
+CONFIGS = [("Baseline", [])]
+
+for r in range(1, len(ENCODINGS) + 1):
+    for combo in combinations(ENCODINGS, r):
+        label = "+ " + " + ".join(name for name, _ in combo)
+        features = [f for _, fs in combo for f in fs]
+        CONFIGS.append((label, features))
+
+print(f"Konfigurationen: {len(CONFIGS)} (Baseline + alle Kombinationen aus E1–E6)")
 
 # 8. Evaluation
 

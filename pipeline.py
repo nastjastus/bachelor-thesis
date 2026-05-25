@@ -260,7 +260,17 @@ print("9. ERGEBNISSE")
 print("=" * 60)
 
 print_results(all_results)
-save_results(all_results)
+
+# Unterordner aus LOG_PATH ableiten (z.B. "bpi2017", "sepsis", "rtf", "synthetic")
+log_stem    = LOG_PATH.stem.lower()
+result_dir  = (
+    "results/bpi2017"   if "2017"    in log_stem else
+    "results/sepsis"    if "sepsis"  in log_stem else
+    "results/rtf"       if "traffic" in log_stem or "road" in log_stem else
+    "results/synthetic" if "test"    in log_stem or "synthetic" in log_stem else
+    "results"
+)
+save_results(all_results, result_dir)
 
 print("\n✓ Pipeline fertig!")
 print("  Neuen Log testen: LOG_PATH in config.py ändern")

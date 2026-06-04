@@ -20,10 +20,10 @@ def train_and_evaluate(df_train, df_test, base_features, target_col, configs, mo
         print(f"\nModell: {model_name}")
         print("-" * 40)
 
-        # für jedes Modell neu gestartet
-        results_summary    = []
+        # für jedes Modell neu gestartet 
+        results_summary    = [] 
         baseline_rmse_test = None
-        baseline_mae_test  = None
+        baseline_mae_test = None
 
         for config_name, extra_features in configs:
             feature_cols = base_features + extra_features
@@ -48,17 +48,23 @@ def train_and_evaluate(df_train, df_test, base_features, target_col, configs, mo
             rmse_test   = np.sqrt(mean_squared_error(y_test, y_pred_test)) / 3600
             mae_test    = mean_absolute_error(y_test, y_pred_test) / 3600
 
-            # Delta zur Baseline berechnen
+            # RMSE Delta zur Baseline berechnen
             if baseline_rmse_test is None:
                 baseline_rmse_test = rmse_test
-                baseline_mae_test  = mae_test
-                delta_rmse_str     = "—"
-                delta_mae_str      = "—"
+                delta_rmse_str = "—"
             else:
                 delta_rmse     = rmse_test - baseline_rmse_test
-                delta_mae      = mae_test  - baseline_mae_test
-                delta_rmse_str = f"{delta_rmse:+.2f} h"
-                delta_mae_str  = f"{delta_mae:+.2f} h"
+                delta_rmse_str = f"{delta_rmse:+.2f} h" # "+" damit vorzeichen angezeigt wird ".2f" = zwei Dezimalstellen
+
+            # MAE Delta zur Baseline berechnen
+            if baseline_mae_test is None:
+                baseline_mae_test = mae_test
+                delta_mae_str = "—"
+            else:
+                delta_mae     = mae_test - baseline_mae_test
+                delta_mae_str = f"{delta_mae:+.2f} h" # "+" damit vorzeichen angezeigt wird ".2f" = zwei Dezimalstellen
+
+    
 
             results_summary.append({
                 "Modell":           model_name,
@@ -91,15 +97,16 @@ def print_results(all_results):
         print(results_df.to_string(index=False))
 
 
-def save_results(all_results, result_dir="results"):
-    out = Path(result_dir)
-    out.mkdir(parents=True, exist_ok=True)
+def save_results(all_results):
+    # Einzelne CSVs pro Modell speichern
+    Path("results").mkdir(exist_ok=True)
 
     for model_name, results_df in all_results.items():
-        filename = out / f"{model_name.lower().replace(' ', '_')}_results.csv"
+        filename = f"results/{model_name.lower().replace(' ', '_')}_results.csv"
         results_df.to_csv(filename, index=False)
         print(f"  Gespeichert: {filename}")
 
+    # Alle Ergebnisse zusammen in einer CSV
     combined = pd.concat(all_results.values(), ignore_index=True)
-    combined.to_csv(out / "all_results.csv", index=False)
-    print(f"  Gespeichert: {out / 'all_results.csv'}")
+    combined.to_csv("results/all_results.csv", index=False)
+    print("  Gespeichert: results/all_results.csv")

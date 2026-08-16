@@ -1,10 +1,10 @@
 """
 xgboost_model.py
 
-XGBoost Modell für Remaining Time Prediction.
-Gradient Boosting - im Gegensatz zu Random Forest werden die Bäume
-sequenziell gebaut, jeder Baum korrigiert die Fehler des vorherigen.
-Oft stärker als Random Forest aber rechenintensiver.
+XGBoost model for remaining time prediction.
+Gradient boosting; unlike Random Forest, the trees are built
+sequentially, each tree correcting the errors of the previous one.
+Often stronger than Random Forest but more compute-intensive.
 """
 
 import xgboost as xgb

@@ -3,50 +3,81 @@ e2_resource_load.py
 
 Encoding 2: resource_load_at_time
 
-Misst den Ressourcen-Wettbewerb zum Zeitpunkt eines Events.
-Nicht wie viele Cases insgesamt laufen, sondern wie viele Cases
-gerade denselben Bearbeiter blockieren. Direkter Konkurrenzdruck
-auf eine spezifische Ressource.
+Measures the resource competition at the time of an event.
+Not how many cases are running in total, but how many cases are
+currently occupying the same resource. Direct competitive pressure
+on a specific resource.
+
+A case occupies at most one resource at any time. SCHEDULE events
+(without a resource) and excluded resources count as occupying nothing.
 """
 
+import heapq
 import pandas as pd
 
 
+def _is_missing(res):
+    """SCHEDULE events have no resource. Depending on the export path,
+    pm4py/XES writes NaN or the string 'None' or 'nan' here."""
+    return pd.isna(res) or str(res).strip() in {"None", "nan", "", "NaN"}
+
+
 def compute(df, case_times, case_col, ts_col, res_col, exclude_resources):
-    # Hilfsvariablen
-    case_end_dict = case_times.set_index(case_col)["end_time"].to_dict()
-    last_res      = {}
-    res_counts    = {}
+    case_end_dict = dict(zip(
+        case_times[case_col].values,
+        case_times["end_time"].values.astype("datetime64[ns]"),
+    ))
+
+    held = {}    # case_id -> currently occupied resource
+    counts = {}  # resource -> number of cases currently occupying it
+    pending = []  # min-heap (end_time, case_id) for release
+    scheduled = set()
     resource_load_values = []
 
-    for _, row in df.iterrows():
-        case_id      = row[case_col]
-        current_res  = row[res_col]
-        current_time = row[ts_col]
+    def release(case_id):
+        r = held.pop(case_id, None)
+        if r is None:
+            return
+        counts[r] -= 1
+        if counts[r] <= 0:
+            counts.pop(r, None)
 
-        # Abgeschlossene Cases aufräumen
-        finished = [c for c, r in list(last_res.items())
-                    if case_end_dict[c] < current_time]
-        for c in finished:
-            r = last_res.pop(c)
-            res_counts[r] = res_counts.get(r, 1) - 1
-            if res_counts[r] <= 0:
-                res_counts.pop(r, None)
+    def acquire(case_id, r):
+        held[case_id] = r
+        counts[r] = counts.get(r, 0) + 1
+        if case_id not in scheduled:
+            heapq.heappush(pending, (case_end_dict[case_id], case_id))
+            scheduled.add(case_id)
 
-        # Ressourcenwechsel behandeln
-        prev_res = last_res.get(case_id)
-        if prev_res is not None and prev_res != current_res:
-            res_counts[prev_res] = res_counts.get(prev_res, 1) - 1
-            if res_counts[prev_res] <= 0:
-                res_counts.pop(prev_res, None)
+    case_arr = df[case_col].values
+    res_arr = df[res_col].values
+    ts_arr = df[ts_col].values.astype("datetime64[ns]")
 
-        # Aktuelles Event zählen
-        if current_res not in exclude_resources:
-            last_res[case_id] = current_res
-            res_counts[current_res] = res_counts.get(current_res, 0) + 1
-            resource_load_values.append(res_counts.get(current_res, 0))
-        else:
+    for case_id, current_res, current_time in zip(case_arr, res_arr, ts_arr):
+        # 1. Finished cases release their resource
+        while pending and pending[0][0] < current_time:
+            release(heapq.heappop(pending)[1])
+
+        # 2. Events without a resource (SCHEDULE) or excluded resources:
+        #    the case occupies nothing at this moment.
+        if _is_missing(current_res) or current_res in exclude_resources:
+            release(case_id)
             resource_load_values.append(0)
+            continue
+
+        # 3. Rebook only on a real change. If the case already holds the
+        #    resource (e.g. START followed by COMPLETE), do NOT count again.
+        if held.get(case_id) != current_res:
+            release(case_id)
+            acquire(case_id, current_res)
+
+        resource_load_values.append(counts[current_res])
+
+    # Check the invariant: each held case is counted exactly once
+    assert sum(counts.values()) == len(held), (
+        f"inconsistent bookkeeping: {sum(counts.values())} counts "
+        f"on {len(held)} occupying cases"
+    )
 
     df["resource_load_at_time"] = resource_load_values
 

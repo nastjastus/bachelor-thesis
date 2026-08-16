@@ -2,9 +2,9 @@
 cart.py
 
 CART - Classification and Regression Tree.
-Ein einzelner Entscheidungsbaum. Einfacher und interpretierbarer
-als Random Forest, aber anfälliger für Overfitting.
-Dient als einfache Baseline für den Modellvergleich.
+A single decision tree. Simpler and more interpretable
+than a Random Forest, but more prone to overfitting.
+Serves as a simple baseline for the model comparison.
 """
 
 from sklearn.tree import DecisionTreeRegressor

@@ -4,12 +4,17 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Daten - Event Logs nicht auf GitHub!
-data/
+# Event logs: keep them off GitHub (the real logs are large and public,
+# available via the DOIs listed in the README).
+# Exception: the three generated synthetic logs used in the thesis.
 *.xes
+data/*
+!data/synthetic_e1_e3.xes
+!data/synthetic_e4.xes
+!data/synthetic_e6.xes
 *.csv.gz
 
-# Ergebnisse - werden lokal gespeichert
+# Results (regenerable by running the pipeline)
 results/
 
 # Mac

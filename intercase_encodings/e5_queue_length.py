@@ -3,19 +3,21 @@ e5_queue_length.py
 
 Encoding 5: queue_length_at_activity
 
-Misst den activity-spezifischen Stau zum Zeitpunkt eines Events.
-Wie viele Cases sind gerade aktiv und haben diese Activity
-noch nicht erreicht? Engpass-Erkennung auf Activity-Ebene
-statt global.
+Measures the activity-specific backlog at the time of an event.
+How many cases are currently active and have not yet reached this
+activity? Bottleneck detection at the activity level instead of
+globally.
+
+Note: for the first activity of a process this encoding is always 0,
+because no active case can have not yet reached it.
 """
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 
 def compute(df, case_times, case_col, act_col, ts_col):
-    # Für jeden Case speichern wann er welche Activity
-    # zum ersten Mal gesehen hat
+    # For each case: when did it first see which activity
     first_occurrence = (
         df.groupby([case_col, act_col])[ts_col]
           .min()
@@ -23,43 +25,41 @@ def compute(df, case_times, case_col, act_col, ts_col):
           .rename(columns={ts_col: "first_seen"})
     )
 
-    # Pro Activity eine Timeline bauen
-    # +1 wenn Case startet, -1 wenn Case die Activity erreicht oder endet
-    activities         = df[act_col].unique()
-    activity_timelines = {}
+    case_ids = case_times[case_col].values
+    starts = case_times["start_time"].values.astype("datetime64[ns]")
+    ends = case_times["end_time"].values.astype("datetime64[ns]")
 
-    for act in activities:
-        act_cases       = first_occurrence[first_occurrence[act_col] == act]
-        first_seen_map  = act_cases.set_index(case_col)["first_seen"].to_dict()
+    ts_all = df[ts_col].values.astype("datetime64[ns]")
+    act_all = df[act_col].values
 
-        events = []
-        for _, ct_row in case_times.iterrows():
-            c = ct_row[case_col]
-            events.append((ct_row["start_time"], +1))
-            if c in first_seen_map:
-                events.append((first_seen_map[c], -1))
-            else:
-                events.append((ct_row["end_time"], -1))
+    queue_values = np.zeros(len(df), dtype=np.int64)
 
-        events_df = pd.DataFrame(events, columns=["time", "delta"])
-        events_df = events_df.sort_values("time").reset_index(drop=True)
-        events_df["queue_after"] = events_df["delta"].cumsum()
-        activity_timelines[act]  = events_df
+    for act in pd.unique(act_all):
+        # +1 when the case starts, -1 when it reaches the activity.
+        # If it never reaches it, then -1 at the case end.
+        fs_map = (
+            first_occurrence.loc[first_occurrence[act_col] == act]
+                            .set_index(case_col)["first_seen"]
+        )
+        minus = pd.to_datetime(pd.Series(case_ids).map(fs_map)).values
+        minus = np.where(np.isnat(minus), ends, minus)
 
-    # Für jeden Event den Wert aus der passenden Timeline ablesen
-    queue_values = []
-    for _, row in df.iterrows():
-        current_time = np.datetime64(row[ts_col], "ns")
-        current_act  = row[act_col]
+        times = np.concatenate([starts, minus])
+        deltas = np.concatenate([
+            np.ones(len(starts), dtype=np.int64),
+            -np.ones(len(minus), dtype=np.int64),
+        ])
 
-        timeline = activity_timelines[current_act]
-        ts_arr   = timeline["time"].values.astype("datetime64[ns]")
+        order = np.argsort(times, kind="stable")
+        times = times[order]
+        queue_after = np.cumsum(deltas[order])
 
-        idx = np.searchsorted(ts_arr, current_time, side="left") - 1
-        if idx < 0:
-            queue_values.append(0)
-        else:
-            queue_values.append(int(timeline["queue_after"].iloc[idx]))
+        # Lookup: last timeline entry STRICTLY before the event.
+        # side="left" minus 1 excludes all simultaneous entries, so the
+        # result is independent of the ordering for identical timestamps.
+        mask = act_all == act
+        idx = np.searchsorted(times, ts_all[mask], side="left") - 1
+        queue_values[mask] = np.where(idx < 0, 0, queue_after[np.maximum(idx, 0)])
 
     df["queue_length_at_activity"] = queue_values
 

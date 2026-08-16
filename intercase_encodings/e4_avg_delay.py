@@ -3,28 +3,28 @@ e4_avg_delay.py
 
 Encoding 4: avg_delay_in_window
 
-Misst die Prozessgeschwindigkeit im Vergleich zum Normalzustand.
-Nicht wie viele Cases laufen, sondern ob das System gerade
-langsamer oder schneller ist als historisch üblich.
-Qualität statt Quantität.
+Measures the process speed compared to the normal state.
+Not how many cases are running, but whether the system is currently
+slower or faster than historically usual.
+Quality instead of quantity.
 
-Wichtig: muss nach dem Train/Test Split berechnet werden,
-weil der historische Durchschnitt nur aus Trainingsdaten
-berechnet werden darf.
+Important: must be computed after the train/test split,
+because the historical average may only be computed from
+training data.
 """
 
 import numpy as np
 
 
 def compute(df, df_train, ts_col, window_days):
-    # Historischen Durchschnitt nur aus Trainingsdaten berechnen
-    # prefix_len > 1 weil erstes Event eines Cases immer 0 hat
+    # Compute the historical average from training data only
+    # prefix_len > 1 because the first event of a case is always 0
     train_delays     = df_train.loc[
         df_train["prefix_len"] > 1, "time_since_last_event_s"
     ].values
     global_avg_delay = np.mean(train_delays)
 
-    # Schnelle Berechnung mit searchsorted
+    # Fast computation via searchsorted
     ts_array     = df[ts_col].values.astype("datetime64[ns]")
     delay_array  = df["time_since_last_event_s"].values
     prefix_array = df["prefix_len"].values

@@ -1,6 +1,8 @@
 pandas
 numpy
+scipy
 pm4py
 scikit-learn
 xgboost
-pathlib
+openpyxl
+matplotlib

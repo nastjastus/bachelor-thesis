@@ -18,7 +18,6 @@ def train_and_evaluate(df_train, df_test, base_features, target_col, configs, mo
 
     for model_name, model in models.items():
         print(f"\nModel: {model_name}")
-        print("-" * 40)
 
         # reset for each model
         results_summary    = []
@@ -90,7 +89,6 @@ def print_results(all_results):
     # Print results for each model
     for model_name, results_df in all_results.items():
         print(f"\n{model_name}")
-        print("=" * 60)
         print(results_df.to_string(index=False))
 
 

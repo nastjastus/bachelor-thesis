@@ -101,9 +101,7 @@ if __name__ == "__main__":
 
     res = pd.DataFrame(rows).sort_values("corr_filtered")
 
-    print("\n" + "=" * 78)
-    print("SELECTION BIAS: corr(case start time, case duration)")
-    print("=" * 78)
+    print("\nSelection bias: corr(case start time, case duration)")
     print(f"{'Log':14}{'Cases':>8}{'kept%':>11}{'corr all':>11}{'corr filt.':>13}{'ratio':>13}")
     for _, r in res.iterrows():
         print(f"{r['log']:14}{r['cases']:8.0f}{r['kept_pct']:11.1f}"

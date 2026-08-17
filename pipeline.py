@@ -36,9 +36,7 @@ from evaluate import train_and_evaluate, print_results, save_results
 
 # 1. Load log
 
-print("=" * 60)
-print("1. LOAD LOG")
-print("=" * 60)
+print("1. Load log")
 
 df = pm4py.read_xes(str(LOG_PATH))
 df = df.sort_values([CASE_COL, TS_COL]).reset_index(drop=True)  # sort by case ID then timestamp
@@ -51,9 +49,7 @@ print(f"Period:     {df[TS_COL].min().date()} → {df[TS_COL].max().date()}")
 
 # 2. Compute remaining time
 
-print("\n" + "=" * 60)
-print("2. REMAINING TIME (TARGET VARIABLE)")
-print("=" * 60)
+print("\n2. Remaining time (target variable)")
 
 # Join case_end_time onto df as a new column
 
@@ -100,9 +96,7 @@ print(f"[DIAGNOSTIC] log length / mean case duration: {log_days/mean_duration_da
 
 # 3. Intra-case features
 
-print("\n" + "=" * 60)
-print("3. INTRA-CASE FEATURES")
-print("=" * 60)
+print("\n3. Intra-case features")
 
 df["prefix_len"] = df.groupby(CASE_COL).cumcount() + 1
 
@@ -137,9 +131,7 @@ print(f"Base features: {len(BASE_FEATURES)} (incl. {len(act_feature_cols)} act d
 
 # 4. Inter-case encodings
 
-print("\n" + "=" * 60)
-print("4. COMPUTE INTER-CASE ENCODINGS")
-print("=" * 60)
+print("\n4. Inter-case encodings")
 
 df = df.sort_values(TS_COL).reset_index(drop=True)
 
@@ -181,9 +173,7 @@ print(f"  batch_size      – min / mean / max: {df['batch_size'].min()} / "
 print(f"  batch_indicator – share of batches: "
       f"{round(df['batch_indicator'].mean() * 100, 1)}% of events")
 
-print("\n" + "=" * 60)
-print(f"5. TRAIN / TEST SPLIT ({SPLIT_MODE})")
-print("=" * 60)
+print(f"\n5. Train/test split ({SPLIT_MODE})")
 
 case_info = pd.DataFrame({
     "case_start_time": df.groupby(CASE_COL)[TS_COL].min(),
@@ -268,9 +258,7 @@ df.to_csv(f"{RESULT_DIR}/debug_df.csv", index=False)
 
 # 6. Define models
 
-print("\n" + "=" * 60)
-print("6. MODELS")
-print("=" * 60)
+print("\n6. Models")
 
 MODELS = {
     "Random Forest": random_forest.get_model(RF_PARAMS),
@@ -284,9 +272,7 @@ print(f"Models: {list(MODELS.keys())}")
 
 TARGET_COL = "remaining_time_s"
 
-print("\n" + "=" * 60)
-print("7. CONFIGURATIONS")
-print("=" * 60)
+print("\n7. Configurations")
 
 ENCODINGS = [
     ("E1", ["open_cases_at_time"]),
@@ -311,9 +297,7 @@ print(f"Configurations: {len(CONFIGS)} (baseline + all combinations of E1–E6)"
 
 # 8. Evaluation
 
-print("\n" + "=" * 60)
-print("8. EVALUATION OF ALL CONFIGURATIONS")
-print("=" * 60)
+print("\n8. Evaluation of all configurations")
 
 all_results = train_and_evaluate(
     df_train, df_test, BASE_FEATURES, TARGET_COL,
@@ -322,13 +306,11 @@ all_results = train_and_evaluate(
 
 # 9. Print and save results
 
-print("\n" + "=" * 60)
-print("9. RESULTS")
-print("=" * 60)
+print("\n9. Results")
 
 print_results(all_results)
 save_results(all_results, result_dir=RESULT_DIR)
 
-print("\n✓ Pipeline done!")
+print("\nPipeline done.")
 print("  Test a new log: change LOG_PATH in config.py")
 print("  Add a new model: models/ folder and MODELS dict in pipeline.py")

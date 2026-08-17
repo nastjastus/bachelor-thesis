@@ -149,9 +149,7 @@ def main():
     xl = pd.ExcelFile(XL_PATH)
 
     for split in ["random", "temporal"]:
-        print("\n" + "=" * 78)
-        print(f"{split.upper()} SPLIT, {METRIC}, {len(INTERPRETABLE)} interpretable logs")
-        print("=" * 78)
+        print(f"\n{split} split, {METRIC}, {len(INTERPRETABLE)} interpretable logs")
 
         for model in MODELS:
             print(f"\n  Model: {model}")

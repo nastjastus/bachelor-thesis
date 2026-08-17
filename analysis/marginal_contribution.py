@@ -121,9 +121,7 @@ def main():
 
     for split in ["random", "temporal"]:
         subset = result[result["split"] == split]
-        print("\n" + "=" * 66)
-        print(f"MEAN MARGINAL CONTRIBUTION IN PERCENTAGE POINTS ({split} split)")
-        print("=" * 66)
+        print(f"\nMean marginal contribution in percentage points ({split} split)")
         header = f"{'Log':26}" + "".join(f"{e:>7}" for e in ENCODINGS)
         print(header)
         for _, r in subset.iterrows():

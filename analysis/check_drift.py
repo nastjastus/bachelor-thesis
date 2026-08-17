@@ -105,9 +105,7 @@ if __name__ == "__main__":
             print(f"  {name} skipped: {e}")
 
     res = pd.DataFrame(rows)
-    print("\n" + "=" * 74)
-    print("DISTRIBUTION SHIFT OF E1, TRAIN -> TEST (temporal split)")
-    print("=" * 74)
+    print("\nDistribution shift of E1, train -> test (temporal split)")
     print(f"{'Log':16}{'KS':>8}{'out%':>12}{'O train':>13}{'O test':>13}")
     for _, r in res.iterrows():
         print(f"{r['log']:16}{r['ks']:8.3f}{r['out_of_range']:11.1f}%"

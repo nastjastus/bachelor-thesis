@@ -76,7 +76,7 @@ RESULT_DIR = (f"results/{LOG_PATH.stem}_{SPLIT_MODE}"
 
 print(f"[CONFIG] {ACTIVE}: {LOG_PATH.name} | RES_COL={RES_COL} | "
       f"{len(EXCLUDE_RESOURCES)} resources excluded | Split={SPLIT_MODE} | "
-      f"complete={FILTER_COMPLETE} | → {RESULT_DIR}")
+      f"complete={FILTER_COMPLETE} | -> {RESULT_DIR}")
 
 # Column names (standard XES). RES_COL is set per log from LOGS[ACTIVE].
 CASE_COL = "case:concept:name"  # case ID

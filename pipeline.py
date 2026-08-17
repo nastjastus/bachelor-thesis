@@ -45,7 +45,7 @@ df[TS_COL] = pd.to_datetime(df[TS_COL], utc=True).dt.tz_localize(None)  # normal
 print(f"Events:     {len(df):,}")
 print(f"Cases:      {df[CASE_COL].nunique():,}")
 print(f"Activities: {df[ACT_COL].nunique()}")
-print(f"Period:     {df[TS_COL].min().date()} → {df[TS_COL].max().date()}")
+print(f"Period:     {df[TS_COL].min().date()} -> {df[TS_COL].max().date()}")
 
 # 2. Compute remaining time
 
@@ -58,9 +58,9 @@ df       = df.join(case_end, on=CASE_COL)
 df["remaining_time_s"] = (df["case_end_time"] - df[TS_COL]).dt.total_seconds()
 df["remaining_time_h"] = df["remaining_time_s"] / 3600
 
-print(f"Remaining Time (h) – min:  {df['remaining_time_h'].min():.1f}")
-print(f"Remaining Time (h) – mean: {df['remaining_time_h'].mean():.1f}")
-print(f"Remaining Time (h) – max:  {df['remaining_time_h'].max():.1f}")
+print(f"Remaining Time (h) - min:  {df['remaining_time_h'].min():.1f}")
+print(f"Remaining Time (h) - mean: {df['remaining_time_h'].mean():.1f}")
+print(f"Remaining Time (h) - max:  {df['remaining_time_h'].max():.1f}")
 
 # --- just an informational statistic: average case duration ---
 case_duration = (
@@ -168,9 +168,9 @@ print(f"  min / mean / max: {df['queue_length_at_activity'].min()} / "
 
 print("\nComputing Encoding 6: batch_indicator + batch_size ...")
 df = e6_batching.compute(df, ACT_COL, TS_COL, CASE_COL, BATCH_WINDOW_MIN)
-print(f"  batch_size      – min / mean / max: {df['batch_size'].min()} / "
+print(f"  batch_size      - min / mean / max: {df['batch_size'].min()} / "
       f"{round(df['batch_size'].mean(), 2)} / {df['batch_size'].max()}")
-print(f"  batch_indicator – share of batches: "
+print(f"  batch_indicator - share of batches: "
       f"{round(df['batch_indicator'].mean() * 100, 1)}% of events")
 
 print(f"\n5. Train/test split ({SPLIT_MODE})")
@@ -186,7 +186,7 @@ eligible = set(case_info[CASE_COL])
 
 if FILTER_COMPLETE:
     if END_ACTIVITIES is None:
-        print("[SPLIT] end_acts=None → filter skipped")
+        print("[SPLIT] end_acts=None -> filter skipped")
     else:
         if END_MODE == "contains":
             with_term = df[df[ACT_COL].isin(END_ACTIVITIES)][CASE_COL].unique()
@@ -195,7 +195,7 @@ if FILTER_COMPLETE:
         else:
             complete = set(case_info.loc[case_info["last_act"].isin(END_ACTIVITIES), CASE_COL])
         print(f"[SPLIT] complete: {len(complete):,} / {n_all:,} "
-              f"({100*len(complete)/n_all:.1f}%) — discarded: {n_all-len(complete):,}")
+              f"({100*len(complete)/n_all:.1f}%) - discarded: {n_all-len(complete):,}")
         eligible &= complete
 
 order = case_info[case_info[CASE_COL].isin(eligible)].sort_values("case_start_time")
@@ -212,7 +212,7 @@ if SPLIT_MODE == "temporal":
             CASE_COL])
         print(f"[SPLIT] split point: {split_time}")
         print(f"[SPLIT] train cases crossing the split point: {len(crossing):,} / "
-              f"{len(train_cases):,} ({100*len(crossing)/len(train_cases):.1f}%) — discarded")
+              f"{len(train_cases):,} ({100*len(crossing)/len(train_cases):.1f}%) - discarded")
         train_cases -= crossing
 
 elif SPLIT_MODE == "random_case":
@@ -293,7 +293,7 @@ for r in range(1, len(ENCODINGS) + 1):
         features = [f for _, fs in combo for f in fs]
         CONFIGS.append((label, features))
 
-print(f"Configurations: {len(CONFIGS)} (baseline + all combinations of E1–E6)")
+print(f"Configurations: {len(CONFIGS)} (baseline + all combinations of E1-E6)")
 
 # 8. Evaluation
 

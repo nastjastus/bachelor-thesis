@@ -50,7 +50,7 @@ def train_and_evaluate(df_train, df_test, base_features, target_col, configs, mo
             # Compute RMSE delta vs. baseline
             if baseline_rmse_test is None:
                 baseline_rmse_test = rmse_test
-                delta_rmse_str = "—"
+                delta_rmse_str = "-"
             else:
                 delta_rmse     = rmse_test - baseline_rmse_test
                 delta_rmse_str = f"{delta_rmse:+.2f} h"  # "+" forces the sign, ".2f" = two decimals
@@ -58,7 +58,7 @@ def train_and_evaluate(df_train, df_test, base_features, target_col, configs, mo
             # Compute MAE delta vs. baseline
             if baseline_mae_test is None:
                 baseline_mae_test = mae_test
-                delta_mae_str = "—"
+                delta_mae_str = "-"
             else:
                 delta_mae     = mae_test - baseline_mae_test
                 delta_mae_str = f"{delta_mae:+.2f} h"  # "+" forces the sign, ".2f" = two decimals

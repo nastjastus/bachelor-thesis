@@ -17,5 +17,9 @@ data/*
 # Results (regenerable by running the pipeline)
 results/
 
+# Exploratory notebook (kept local) and build artifacts
+exploration.ipynb
+submission.zip
+
 # Mac
 .DS_Store

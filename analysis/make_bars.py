@@ -37,15 +37,15 @@ ALL_SIX = "+ E1 + E2 + E3 + E4 + E5 + E6"
 LOGS = [
     ("BPIC2011", "BPIC2011"),
     ("Production", "Production"),
-    ("rtf", "Road Traffic Fines"),
+    ("rtf", "RTF"),
     ("BPIC2012_w", "BPIC2012-W"),
     ("BPIC2012", "BPIC2012"),
     ("Sepsis", "Sepsis"),
     ("BPIC2017", "BPIC2017"),
     ("Helpdesk", "Helpdesk"),
-    ("Domestic", "Domestic Decl."),
+    ("Domestic", "BPIC2020"),
 ]
-TRUNCATED = ("helpdesk_{split}_resolved", "Helpdesk (truncated)")
+TRUNCATED = ("helpdesk_{split}_resolved", "Helpdesk (T)")
 
 # TUM colours
 TUM_BLUE = (0 / 255, 101 / 255, 189 / 255)
@@ -95,7 +95,7 @@ def main():
     y = np.arange(len(labels))
     height = 0.38
 
-    fig, axes = plt.subplots(1, 2, figsize=(9, 5.4), sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=(9, 4.2), sharey=True)
 
     for ax, (i_all, i_best, title) in zip(
             axes, [(0, 1, "Random split"), (2, 3, "Temporal split")]):

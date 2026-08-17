@@ -34,17 +34,19 @@ METRIC = "Test MAE (h)"
 MODELS = ["Random Forest", "CART", "XGBoost"]
 ENCODINGS = ["E1", "E2", "E3", "E4", "E5", "E6"]
 
-# Sheet prefix and display name, in the order used in the thesis
+# Sheet pattern and display name, in the order used in the thesis.
+# The truncated Helpdesk sheet carries the split in the middle.
 LOGS = [
-    ("Sepsis", "Sepsis"),
-    ("BPIC2011", "BPIC2011"),
-    ("Production", "Production"),
-    ("BPIC2017", "BPIC2017"),
-    ("Helpdesk", "Helpdesk"),
-    ("BPIC2012_w", "BPIC2012-W"),
-    ("BPIC2012", "BPIC2012"),
-    ("Domestic", "Domestic Decl."),
-    ("rtf", "Road Traffic Fines"),
+    ("BPIC2011_{split}", "BPIC2011"),
+    ("Production_{split}", "Production"),
+    ("rtf_{split}", "RTF"),
+    ("BPIC2012_w_{split}", "BPIC2012-W"),
+    ("BPIC2012_{split}", "BPIC2012"),
+    ("Sepsis_{split}", "Sepsis"),
+    ("BPIC2017_{split}", "BPIC2017"),
+    ("Helpdesk_{split}", "Helpdesk"),
+    ("Domestic_{split}", "BPIC2020"),
+    ("helpdesk_{split}_resolved", "Helpdesk (T)"),
 ]
 
 # TUM colours
@@ -95,8 +97,8 @@ def build_matrix(split, xl):
     values = np.full((len(LOGS), len(ENCODINGS)), np.nan)
     consistent = np.zeros_like(values, dtype=bool)
 
-    for i, (prefix, _) in enumerate(LOGS):
-        sheet = f"{prefix}_{split}"
+    for i, (pattern, _) in enumerate(LOGS):
+        sheet = pattern.format(split=split)
         if sheet not in xl.sheet_names:
             print(f"  sheet not found, skipped: {sheet}")
             continue

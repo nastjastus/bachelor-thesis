@@ -252,8 +252,9 @@ for f in ["open_cases_at_time", "peer_cases_in_window", "avg_delay_in_window",
     print(f"  {f:26s} train [{tr.min():8.1f}, {tr.max():8.1f}]  "
           f"test [{te.min():8.1f}, {te.max():8.1f}]  outside: {outside:5.1f}%")
 
-Path(RESULT_DIR).mkdir(parents=True, exist_ok=True)
-df.to_csv(f"{RESULT_DIR}/debug_df.csv", index=False)
+# Uncomment to dump the full feature dataframe and check it by hand.
+# Path(RESULT_DIR).mkdir(parents=True, exist_ok=True)
+# df.to_csv(f"{RESULT_DIR}/debug_df.csv", index=False)
 
 
 # 6. Define models

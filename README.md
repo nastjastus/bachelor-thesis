@@ -1,121 +1,96 @@
-# Inter-Case Feature Encodings for Remaining Time Prediction
+# Inter-case feature encodings for remaining time prediction
 
-Code for the bachelor's thesis *"Assessing the Impact of Inter-Case Feature
-Encodings for Remaining Time Prediction in Predictive Process Monitoring"*
+Code for my bachelor thesis, "Assessing the Impact of Inter-Case Feature
+Encodings for Remaining Time Prediction in Predictive Process Monitoring"
 (Anastasia Stus, TUM).
 
-The pipeline implements six inter-case feature encodings (E1–E6) in a unified
-setup and evaluates all 64 combinations across three tree-based models
-(Random Forest, CART, XGBoost) and two train/test split strategies (temporal
-and random), on real-world and synthetic event logs.
+The pipeline computes six inter-case encodings (E1-E6), combines them in all 64
+ways, and evaluates each combination with three tree-based models (Random Forest,
+CART, XGBoost) under a temporal and a random split. It runs on nine real-world
+logs and three synthetic ones.
 
 ## Setup
 
-Python 3.9+. Install the dependencies (ideally into a virtual environment):
+Needs Python 3.9+. I use a virtual environment:
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Dependencies: `pandas`, `numpy`, `scipy`, `pm4py`, `scikit-learn`, `xgboost`,
-`openpyxl`.
+## Running it
 
-## Running the pipeline
+Pick the log and split in `config.py` (`ACTIVE` and `SPLIT_MODE`), then run
+`python pipeline.py` from the project root. Results land in
+`results/<log>_<split>/` as one CSV per model plus a combined `all_results.csv`.
 
-1. Open `config.py` and choose the log and split:
-   - `ACTIVE` — which log to run (a key of the `LOGS` dictionary, e.g. `"helpdesk"`)
-   - `SPLIT_MODE` — `"temporal"` or `"random_case"`
-2. Run from the **project root**:
+Run everything from the project root: the scripts use relative `data/` paths and
+import `config.py` from there.
 
-```bash
-python pipeline.py
-```
+## What's where
 
-Results are written to `results/<log>_<split>[_complete]/` as one CSV per model
-plus a combined `all_results.csv`.
+- `config.py` - all settings (log, split, model and encoding parameters)
+- `pipeline.py` - the main pipeline (load log, features, train, evaluate, save)
+- `evaluate.py` - trains the configurations and computes MAE/RMSE
+- `models/` - the three models
+- `intercase_encodings/` - the six encodings E1-E6
+- `simulators/` - generate the synthetic logs
+- `analysis/` - preprocessing and the scripts behind the thesis tables/figures
+- `data/` - event logs (see below)
+- `results/` - pipeline output
 
-> **Run everything from the project root.** The scripts use relative `data/`
-> paths and import `config.py` from the root. `analysis/marginal_contribution.py`
-> is the only exception — it can be run from anywhere.
+`simulator_e2.py` and `simulator_e2_e5.py` in the root were exploratory and are
+not part of the thesis.
 
-## Project structure
+## Encodings
 
-```
-config.py                 Central configuration (log, split, model/encoding params)
-pipeline.py               Main pipeline: load log → features → train → evaluate → save
-evaluate.py               Trains all configurations and computes MAE/RMSE
-models/                   Prediction models: cart, random_forest, xgboost_model
-intercase_encodings/      Inter-case encodings E1–E6
-simulators/               Discrete-event simulators for the synthetic logs
-analysis/                 Preprocessing + analysis scripts (reproduce the thesis tables)
-data/                     Event logs (XES) — see "Event logs" below
-results/                  Pipeline output, one subfolder per log/split
-requirements.txt
-```
+- E1 `open_cases_at_time` - how many cases are open at that moment
+- E2 `resource_load_at_time` - cases on the same resource
+- E3 `peer_cases_in_window` - how many cases started recently
+- E4 `avg_delay_in_window` - current speed vs. the historical average
+- E5 `queue_length_at_activity` - backlog at a given activity
+- E6 `batch_indicator` + `batch_size` - batch co-occurrence
 
-The exploratory `simulator_e2.py` / `simulator_e2_e5.py` in the root are **not
-part of the thesis** (E2/E5 have no synthetic evidence, see thesis Section 4.2.2).
+## Synthetic logs
 
-## Inter-case encodings (thesis Section 3.3)
+Each simulator writes one log to `data/` and isolates a single mechanism:
 
-| Code | Feature | Meaning |
-|------|---------|---------|
-| E1 | `open_cases_at_time` | Global system load (number of open cases) |
-| E2 | `resource_load_at_time` | Cases occupying the same resource |
-| E3 | `peer_cases_in_window` | Arrival rate of new cases in a time window |
-| E4 | `avg_delay_in_window` | Current speed vs. historical average |
-| E5 | `queue_length_at_activity` | Backlog at a specific activity |
-| E6 | `batch_indicator` + `batch_size` | Batch co-occurrence |
+- `simulators/simulator_e1_e3.py` -> `synthetic_e1_e3.xes` (system load, E1/E3)
+- `simulators/simulator_e4.py` -> `synthetic_e4.xes` (load-independent delay, E4)
+- `simulators/simulator_e6.py` -> `synthetic_e6.xes` (batching, E6)
 
-## Synthetic logs (thesis Section 4.2.2)
-
-Run from the project root; each writes its log to `data/`:
-
-| Script | Output | Isolated mechanism |
-|--------|--------|--------------------|
-| `simulators/simulator_e1_e3.py` | `synthetic_e1_e3.xes` | System load (E1, E3) |
-| `simulators/simulator_e4.py` | `synthetic_e4.xes` | Load-independent delay (E4) |
-| `simulators/simulator_e6.py` | `synthetic_e6.xes` | Batching (E6) |
-
-The three simulators adapt the base discrete-event simulator framework from
-prior work at the supervising chair (Mustroph, Kunkler & Rinderle-Ma; thesis
-reference [14]), which is publicly available at
+They build on the simulator from the supervising chair (Mustroph, Kunkler &
+Rinderle-Ma, ref [14] in the thesis), which is public and not copied in here:
 https://github.com/ProbabilisticSuffixPredictionLab/Probabilistic_Suffix_Prediction_U-ED-LSTM_pub
-and is therefore not included here.
 
-## Analysis scripts (reproduce the thesis tables/figures)
+## Analysis scripts
 
-Run from the project root:
+These reproduce the tables and figures. Run them from the project root:
 
-| Script | Reproduces |
-|--------|-----------|
-| `analysis/marginal_contribution.py` | Table 4 — mean marginal contribution per encoding |
-| `analysis/make_bars.py` | Figure 3 — delta to baseline per log, both splits |
-| `analysis/make_heatmap.py` | Figure 4 — marginal contribution heatmap, both splits |
-| `analysis/stat_tests.py` | Table 5 — Wilcoxon and Friedman/Nemenyi significance tests |
-| `analysis/check_drift.py` | Table 9 — KS distribution shift of E1 (temporal split) |
-| `analysis/check_censoring.py` | Section 4.5 — right-censoring correlation per log |
-| `analysis/inspect_ends.py <log>` | Table 8 — end-activity distribution |
-| `analysis/case_duration.py` | Table 2 — mean case duration (BPIC2017, Domestic) |
-| `analysis/truncate_helpdesk.py` | Helpdesk truncated variant (Section 4.4.4) |
-| `analysis/filter_bpic12.py` | BPIC2012-W variant |
-| `analysis/convert_csv_to_xes.py` | CSV → XES conversion (Production, Helpdesk) |
+- `marginal_contribution.py` - Table 4
+- `make_bars.py` - Figure 3
+- `make_heatmap.py` - Figure 4
+- `stat_tests.py` - Table 5 (Wilcoxon, Friedman/Nemenyi)
+- `check_drift.py` - Table 9
+- `check_censoring.py` - censoring correlation (Section 4.5)
+- `inspect_ends.py <log>` - Table 8
+- `case_duration.py` - Table 2
+- `truncate_helpdesk.py` - builds the truncated Helpdesk log
+- `filter_bpic12.py` - builds the BPIC2012-W log
+- `convert_csv_to_xes.py` - CSV to XES conversion
 
-`marginal_contribution.py`, `make_bars.py`, `make_heatmap.py` and
-`stat_tests.py` read `analysis/Ergebnisse_aller_Logs.xlsx` (the compiled
-pipeline results); the first three write their output (CSV / PNG) next to
-themselves, `stat_tests.py` prints to the console.
+The first four read `analysis/Ergebnisse_aller_Logs.xlsx`, the collected pipeline
+results.
 
 ## Event logs
 
-The synthetic logs are generated by the simulators above. The real-world logs
-are public benchmarks and are **not included** here; download them and place
-them in `data/` under the file names expected by `config.py`:
+The synthetic logs come from the simulators. The real logs are public benchmarks
+and are not in the repo. Download them and put them into `data/` with the file
+names `config.py` expects:
 
-| Log | File in `data/` | Source (DOI) |
-|-----|-----------------|--------------|
+| Log | File in data/ | DOI |
+|-----|---------------|-----|
 | Sepsis | `Sepsis Cases - Event Log.xes` | https://doi.org/10.4121/uuid:915d2bfb-7e84-49ad-a286-dc35f063a460 |
 | BPIC2011 | `hospital_log.xes` | https://doi.org/10.4121/uuid:d9769f3d-0ab0-4fb8-803b-0d1120ffcf54 |
 | BPIC2012 | `financial_log.xes` | https://doi.org/10.4121/uuid:3926db30-f712-4394-aebc-75976070e91f |
@@ -125,6 +100,5 @@ them in `data/` under the file names expected by `config.py`:
 | Production | `production.xes` | https://doi.org/10.4121/uuid:68726926-5ac5-4fab-b873-ee76ea412399 |
 | Helpdesk | `helpdesk.xes` | https://doi.org/10.4121/uuid:0c60edf1-6f83-4e75-9367-4c63b3e9d5bb |
 
-Two variants are derived from the downloaded logs:
-`bpic2012_w.xes` via `analysis/filter_bpic12.py`, and `helpdesk_resolved.xes`
-via `analysis/truncate_helpdesk.py`.
+`bpic2012_w.xes` and `helpdesk_resolved.xes` are built from the downloaded logs
+with `filter_bpic12.py` and `truncate_helpdesk.py`.
